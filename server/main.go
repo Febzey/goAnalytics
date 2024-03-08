@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github/febzey/go-analytics/internal/database"
 	"log"
 	"net/http"
 	"os"
@@ -23,7 +24,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	//db := database.NewDatabase()
+	db := database.NewDatabase()
+	db.Init()
 
 	router := mux.NewRouter()
 	router.Use(mux.CORSMethodMiddleware(router))
