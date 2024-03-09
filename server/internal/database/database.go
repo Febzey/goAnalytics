@@ -46,7 +46,3 @@ func (d *Database) Init() error {
 	log.Println("Connected to the database")
 	return nil
 }
-
-func (d *Database) InsertPageAnalyticData() {
-
-}

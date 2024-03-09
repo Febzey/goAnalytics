@@ -1,15 +1,18 @@
 (() => {
     "use strict";
 
-    interface UserData {
+    interface EventData {
+        event: string
         userAgent: string;
         url: string;
         referrer: string;
+        longitude?: number;
+        latitude?: number;
     }
 
     interface AnalyticsData {
         event: string;
-        userData: UserData;
+        EventData: EventData;
     }
 
     /**
@@ -29,8 +32,7 @@
     const sendAnalyticsData = (data: AnalyticsData): void => {
         const img = new Image();
         img.src = `http://localhost:8080/analytics?${encodeData({
-            event: data.event,
-            userData: JSON.stringify(data.userData),
+            data: JSON.stringify(data.EventData),
         })}`;
     };
 
@@ -38,8 +40,9 @@
      * Getting some data on the client viewing the page.
      * @returns 
      */
-    const gatherUserData = (): UserData => {
+    const gatherEventData = async (eventType: string): Promise<EventData> => {
         return {
+            event: eventType,
             userAgent: navigator.userAgent,
             url: window.location.href,
             referrer: document.referrer,
@@ -47,31 +50,23 @@
     };
 
     /**
-     * Fires when the page loads.
+     * Fires when the route is changed or page loads or hash change
      * Sends data to server.
      */
-    const handlePageLoad = (): void => {
-        const userData = gatherUserData();
-        const analyticsData: AnalyticsData = {
-            event: 'pageLoad',
-            userData,
-        };
-        sendAnalyticsData(analyticsData);
+    const handleRouteChange = (type: string) => {
+        gatherEventData(type)
+            .then((eventData) => {
+                const analyticsData: AnalyticsData = {
+                    event: 'routeChange',
+                    EventData: eventData,
+                };
+                sendAnalyticsData(analyticsData);
+            })
+            .catch((error) => {
+                console.error('Error handling route change:', error);
+            });
     };
-
-    /**
-     * Fires when the route is changed
-     * Sends data to server.
-     */
-    const handleRouteChange = (): void => {
-        const userData = gatherUserData();
-        const analyticsData: AnalyticsData = {
-            event: 'routeChange',
-            userData,
-        };
-        sendAnalyticsData(analyticsData);
-    };
-
+    
     /**
      * Setting page change listener for Singe Page Applications such as
      * react, vue, angular etc.
@@ -90,17 +85,17 @@
         
         
         history.pushState = stateListener('pushState');
-        window.addEventListener('pushState', handleRouteChange);
+        window.addEventListener('pushState', () => handleRouteChange("pushstate"));
 
         if ('onhashchange' in window) {
-            window.onhashchange = handleRouteChange;
+            window.onhashchange = () => handleRouteChange("onhashchange");
         }
     };
 
     /**
      * Listen for when the page loads for first time.
      */
-    window.addEventListener('load', handlePageLoad);
+    window.addEventListener('load', () => handleRouteChange("load"));
 
     // Check if it's an SPA and set up appropriate listeners
     if (history.pushState !== undefined) {

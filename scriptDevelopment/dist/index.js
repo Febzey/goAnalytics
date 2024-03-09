@@ -1,92 +1,57 @@
 "use strict";
-// (() => {
-//     "use strict";
-//     /**
-//      * Sending our analytic data to backend server. 
-//      * data includes the event type.
-//      * @param data 
-//      */
-//     const sendAnalyticsData = (data: any) => {
-//         // Create a new Image element
-//         const img = new Image();
-//         // Construct the URL with data as query parameters
-//         const url = `http://localhost:8080/analytics?${encodeData({
-//             event: [data.event],
-//             userData: [JSON.stringify(data)],
-//         })}`;
-//         // Set the image source to trigger the GET request
-//         img.src = url;
-//     };
-//     // Function to encode data as query parameters
-//     const encodeData = (data: any) => {
-//         return Object.keys(data)
-//             .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(data[key])}`)
-//             .join('&');
-//     };
-//     const gatherUserData = () => {
-//         return {
-//             userAgent: navigator.userAgent,
-//             url: window.location.href,
-//             referrer: document.referrer,
-//         };
-//     };
-//     const handleEvent = (eventType: string) => {
-//         const userData = gatherUserData();
-//         const analyticsData = {
-//             event: eventType,
-//             userData,
-//             // Add more data as needed
-//         };
-//         sendAnalyticsData(analyticsData);
-//     };
-//     // Listen for various events
-//     window.addEventListener('load', () => handleEvent('pageLoad'));
-//     window.addEventListener('popstate', () => handleEvent('popstate'));
-//     window.addEventListener('hashchange', () => handleEvent('hashchange'));
-//     window.addEventListener('DOMContentLoaded', () => handleEvent('domcontentloaded'));
-//     window.addEventListener('', () => handleEvent('domcontentloaded'));
-//     document.addEventListener('click', (event) => {
-//         //@ts-ignore
-//         console.log("leeleek")
-//     });
-// })();
 (() => {
     "use strict";
+    /**
+     * Encoding data to send in img get.
+     */
     const encodeData = (data) => {
         return Object.entries(data)
             .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
             .join('&');
     };
+    /**
+     * Sending our data in an image get request to backend server.
+     * @param data
+     */
     const sendAnalyticsData = (data) => {
         const img = new Image();
         img.src = `http://localhost:8080/analytics?${encodeData({
-            event: data.event,
-            userData: JSON.stringify(data.userData),
+            data: JSON.stringify(data.EventData),
         })}`;
     };
-    const gatherUserData = () => {
+    /**
+     * Getting some data on the client viewing the page.
+     * @returns
+     */
+    const gatherEventData = async (eventType) => {
         return {
+            event: eventType,
             userAgent: navigator.userAgent,
             url: window.location.href,
             referrer: document.referrer,
         };
     };
-    const handlePageLoad = () => {
-        const userData = gatherUserData();
-        const analyticsData = {
-            event: 'pageLoad',
-            userData,
-        };
-        sendAnalyticsData(analyticsData);
+    /**
+     * Fires when the route is changed or page loads or hash change
+     * Sends data to server.
+     */
+    const handleRouteChange = (type) => {
+        gatherEventData(type)
+            .then((eventData) => {
+            const analyticsData = {
+                event: 'routeChange',
+                EventData: eventData,
+            };
+            sendAnalyticsData(analyticsData);
+        })
+            .catch((error) => {
+            console.error('Error handling route change:', error);
+        });
     };
-    const handleRouteChange = () => {
-        const userData = gatherUserData();
-        const analyticsData = {
-            event: 'routeChange',
-            userData,
-        };
-        sendAnalyticsData(analyticsData);
-    };
+    /**
+     * Setting page change listener for Singe Page Applications such as
+     * react, vue, angular etc.
+     */
     const setupSPAListener = () => {
         const stateListener = (type) => {
             const orig = history[type];
@@ -99,13 +64,15 @@
             };
         };
         history.pushState = stateListener('pushState');
-        window.addEventListener('pushState', handleRouteChange);
+        window.addEventListener('pushState', () => handleRouteChange("pushstate"));
         if ('onhashchange' in window) {
-            window.onhashchange = handleRouteChange;
+            window.onhashchange = () => handleRouteChange("onhashchange");
         }
     };
-    // Listen for the page load event
-    window.addEventListener('load', handlePageLoad);
+    /**
+     * Listen for when the page loads for first time.
+     */
+    window.addEventListener('load', () => handleRouteChange("load"));
     // Check if it's an SPA and set up appropriate listeners
     if (history.pushState !== undefined) {
         setupSPAListener();

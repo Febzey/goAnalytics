@@ -3,24 +3,15 @@ package database
 import (
 	"fmt"
 	"log"
-	"time"
 )
 
 // Page represents the pages table.
 type Page struct {
 	ID        int64  `json:"id"`
 	URL       string `json:"url"`
+	Route     string `json:"route"`
+	IsSecure  int    `json:"is_secure"`
 	ViewCount int    `json:"view_count"`
-}
-
-// PageView represents the page_views table.
-type PageView struct {
-	ID        int64     `json:"id"`
-	PageID    int64     `json:"page_id"`
-	UserAgent string    `json:"user_agent"`
-	Referrer  string    `json:"referrer"`
-	Timestamp time.Time `json:"timestamp"`
-	IPAddress string    `json:"ip_address"`
 }
 
 func (d *Database) createTables() error {
@@ -29,15 +20,26 @@ func (d *Database) createTables() error {
 		`CREATE TABLE IF NOT EXISTS pages (
 			id INT AUTO_INCREMENT PRIMARY KEY,
 			url VARCHAR(255) NOT NULL,
-			view_count INT DEFAULT 0
-		);`,
+			route VARCHAR(255) NOT NULL,
+			is_secure TINYINT(1) DEFAULT 0,
+			view_count INT DEFAULT 0,
+			UNIQUE KEY unique_page (url, route)
+		)`,
 		`CREATE TABLE IF NOT EXISTS page_views (
 			id INT AUTO_INCREMENT PRIMARY KEY,
 			page_id INT,
+			analytics_token VARCHAR(255),
 			user_agent VARCHAR(255),
 			referrer VARCHAR(255),
 			timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			ip_address VARCHAR(45),
+			city VARCHAR(255),
+			region VARCHAR(255),
+			country VARCHAR(255),
+			loc VARCHAR(255),
+			org VARCHAR(255),
+			postal VARCHAR(255),
+			timezone VARCHAR(255),
 			FOREIGN KEY (page_id) REFERENCES pages(id)
 		);`,
 	}
@@ -50,30 +52,5 @@ func (d *Database) createTables() error {
 	}
 
 	log.Println("Tables created successfully")
-	return nil
-}
-
-// InsertPage inserts a new page or increments the view count if the page already exists.
-func (d *Database) InsertPage(url string) (int64, error) {
-	result, err := d.db.Exec("INSERT INTO pages (url) VALUES (?) ON DUPLICATE KEY UPDATE view_count = view_count + 1", url)
-	if err != nil {
-		return 0, fmt.Errorf("failed to insert page: %v", err)
-	}
-
-	id, err := result.LastInsertId()
-	if err != nil {
-		return 0, fmt.Errorf("failed to get last insert ID: %v", err)
-	}
-
-	return id, nil
-}
-
-// InsertPageView adds a new page view entry.
-func (d *Database) InsertPageView(pageID int64, userAgent, referrer, ipAddress string) error {
-	_, err := d.db.Exec("INSERT INTO page_views (page_id, user_agent, referrer, ip_address) VALUES (?, ?, ?, ?)", pageID, userAgent, referrer, ipAddress)
-	if err != nil {
-		return fmt.Errorf("failed to insert page view: %v", err)
-	}
-
 	return nil
 }
