@@ -21,7 +21,11 @@ type Controller struct {
 	// this way we may not have to make as many requests to different service such as ipinfo
 	ClientCache map[string]ClientDetails
 
+	// a cache for page views.
 	PageViews PageViewCache
+
+	// handlers for different analaytic payloads.
+	AnalyticEventHandlers map[string]AnalyticEventHandler
 }
 
 type Route struct {
@@ -39,12 +43,15 @@ type Route struct {
 func NewController(router *mux.Router, database *database.Database) *Controller {
 
 	c := &Controller{
-		r:           router,
-		db:          database,
-		mu:          sync.Mutex{},
-		ClientCache: make(map[string]ClientDetails),
-		PageViews:   *NewPageViewCache(),
+		r:                     router,
+		db:                    database,
+		mu:                    sync.Mutex{},
+		ClientCache:           make(map[string]ClientDetails),
+		PageViews:             *NewPageViewCache(),
+		AnalyticEventHandlers: make(map[string]AnalyticEventHandler),
 	}
+
+	c.newEventHandler()
 
 	return c
 
@@ -56,7 +63,7 @@ func (c *Controller) LoadRoutes() {
 		{
 			Method:      http.MethodGet,
 			Pattern:     "/analytics",
-			HandlerFunc: c.analyticsHandler,
+			HandlerFunc: c.analyticsReportHandler,
 		},
 		{
 			Method:      http.MethodGet,
@@ -68,18 +75,4 @@ func (c *Controller) LoadRoutes() {
 	for _, route := range routes {
 		c.r.HandleFunc(route.Pattern, route.HandlerFunc).Methods(route.Method)
 	}
-}
-
-func (c *Controller) updateClientDetails(token string, details ClientDetails) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.ClientCache[token] = details
-}
-
-// Function to retrieve user details from the map
-func (c *Controller) getClientDetails(token string) (ClientDetails, bool) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	details, exists := c.ClientCache[token]
-	return details, exists
 }

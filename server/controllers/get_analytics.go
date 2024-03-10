@@ -27,7 +27,6 @@ func (c *Controller) getPageViews(w http.ResponseWriter, r *http.Request) {
 
 	viewCount, err := c.db.SelectPageRouteViews(url, route)
 	if err != nil {
-		log.Printf("Failed to get page route views: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
