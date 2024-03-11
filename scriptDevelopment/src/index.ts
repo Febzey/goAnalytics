@@ -6,8 +6,6 @@
         userAgent: string;
         url: string;
         referrer: string;
-        longitude?: number;
-        latitude?: number;
     }
 
     interface AnalyticsData {

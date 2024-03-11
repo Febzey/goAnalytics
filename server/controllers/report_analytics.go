@@ -11,6 +11,12 @@ import (
 
 //operose
 
+// type PageViewData struct {
+// 	isFirstLoad bool
+
+// 	view_duration int64
+// }
+
 // A structure for incoming analytic data payloads
 type AnalyticsPayload struct {
 
@@ -26,15 +32,13 @@ type AnalyticsPayload struct {
 	// if the payload was a load, there might have been a referrer
 	Referrer string `json:"referrer"`
 
+	// token for client stored in cookie
+	ClientToken string
+
 	//! todo - add data for button
 	//! Perhaps use this structure for each event, but add a dynamic data struct within this.
 	//! like a arbitrary interface struct
 
-	//add api key here eventually.
-	//do checks to see if api key owner is for the website its sent from
-	//do some permission checks, ex: views counter is free, button clicks is paid or something.
-
-	ClientToken string
 }
 
 // * Main controller for handling incoming analytics data,
@@ -59,7 +63,7 @@ func (c *Controller) analyticsReportHandler(w http.ResponseWriter, r *http.Reque
 
 		// Token that is retrieved from clients cookie,
 		// or a new one is created and stored in a cookie if doesnt exist.
-		token string
+		//token string
 
 		// Client details mostly information from IP address.
 		// This is for a client that is viewing a page.
@@ -76,26 +80,26 @@ func (c *Controller) analyticsReportHandler(w http.ResponseWriter, r *http.Reque
 	// Getting IP address for client.
 	ip := getClientIP(r)
 	// Getting token stored in clients browser cookies.
-	token = getAnalyticsToken(r)
+	payload.ClientToken = getAnalyticsToken(r)
 
 	// If there is no token, we create a new token and store it in the clients browser.
 	// We also create new client details and store it in cache
-	if token == "" {
-		token = generateAnalyticsToken()
-		setAnalyticsToken(w, token)
+	if payload.ClientToken == "" {
+		payload.ClientToken = generateAnalyticsToken()
+		setAnalyticsToken(w, payload.ClientToken)
 
 		details, err := getNewClientDetails(ip)
 		if err != nil {
 			fmt.Println("Error: could not get ip details")
 		}
 
-		c.updateClientDetails(token, *details)
+		c.updateClientDetails(payload.ClientToken, *details)
 
 		clientDetails = *details
 
 	} else {
 		// Token exists, so getting it from cache
-		details, exists := c.getClientDetails(token)
+		details, exists := c.getClientDetails(payload.ClientToken)
 		if !exists {
 
 			//couldnt find client details in cache,
@@ -105,7 +109,7 @@ func (c *Controller) analyticsReportHandler(w http.ResponseWriter, r *http.Reque
 				fmt.Println("Error: could not get ip details")
 			}
 
-			c.updateClientDetails(token, *newDetails)
+			c.updateClientDetails(payload.ClientToken, *newDetails)
 
 			clientDetails = *newDetails
 
@@ -118,7 +122,6 @@ func (c *Controller) analyticsReportHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	//should have payload by now idk
-	payload.ClientToken = token
 
 	err := c.handleAnalyticEvent(payload.Event, payload, clientDetails)
 	if err != nil {
