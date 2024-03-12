@@ -3,7 +3,6 @@ package controllers
 import (
 	"errors"
 	"log"
-	"time"
 )
 
 type AnalyticEventHandler struct {
@@ -19,6 +18,10 @@ func (c *Controller) newEventHandler() {
 		},
 		{
 			event:   "pushstate",
+			handler: c.handleLoadPayload,
+		},
+		{
+			event:   "onhashchange",
 			handler: c.handleLoadPayload,
 		},
 		{
@@ -41,9 +44,9 @@ func (c *Controller) newEventHandler() {
 }
 
 // Fires for analytic events, for further handling
-func (c *Controller) handleAnalyticEvent(event string, payload AnalyticsPayload, clientDetails ClientDetails) error {
+func (c *Controller) handleAnalyticEvent(payload AnalyticsPayload, clientDetails ClientDetails) error {
 
-	eventHandler, exists := c.AnalyticEventHandlers[event]
+	eventHandler, exists := c.AnalyticEventHandlers[payload.Event]
 	if !exists {
 		return errors.New("no analytic event found")
 	}
@@ -59,23 +62,24 @@ func (c *Controller) handleAnalyticEvent(event string, payload AnalyticsPayload,
 // Fires whenever a client loads or navigates through pages
 func (c *Controller) handleLoadPayload(payload AnalyticsPayload, clientDetails ClientDetails) error {
 
-	lastPageView, exists := c.GetLastPageViewByURL(payload.ClientToken, payload.URL)
-	if exists {
-		timeThreshold := time.Now().Add(-25 * time.Minute).Unix()
-		if lastPageView.Time >= timeThreshold {
-			return nil
-		}
-	}
+	// 25 minute timer for client before another view can be inserted
+	// lastPageView, exists := c.GetLastPageViewByURL(payload.ClientToken, payload.URL)
+	// if exists {
+	// 	timeThreshold := time.Now().Add(-25 * time.Minute).Unix()
+	// 	if lastPageView.Time >= timeThreshold {
+	// 		return nil
+	// 	}
+	// }
 
-	c.AddPageView(payload.ClientToken, payload.URL)
+	c.AddPageView(payload.ClientData.Token, payload.ClientData.URL)
 
-	pageID, err := c.db.InsertPage(payload.URL)
+	pageID, err := c.db.InsertPage(payload.ClientData.URL)
 	if err != nil {
 		log.Printf("Failed to insert page: %v", err)
 		return err
 	}
 
-	pageView := c.createPageView(payload.ClientToken, payload, clientDetails.IP, clientDetails, pageID)
+	pageView := c.createPageView(payload.ClientData.Token, payload, clientDetails.IP, clientDetails, pageID)
 
 	if err := c.db.InsertPageView(pageView); err != nil {
 		log.Printf("Failed to insert page view: %v", err)
@@ -87,6 +91,8 @@ func (c *Controller) handleLoadPayload(payload AnalyticsPayload, clientDetails C
 // Analytic event handler for when a client unloads a page.
 func handleUnloadPayload(payload AnalyticsPayload, clientDetails ClientDetails) error {
 	//!Implemenent me
+	// need to umarshal the payload data.
+
 	return nil
 }
 

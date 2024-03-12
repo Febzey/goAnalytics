@@ -11,18 +11,15 @@ import (
 
 //operose
 
-// type PageViewData struct {
-// 	isFirstLoad bool
+type PageViewData struct {
+	isFirstLoad bool
+}
 
-// 	view_duration int64
-// }
+type UnloadPageData struct {
+	view_duration int64
+}
 
-// A structure for incoming analytic data payloads
-type AnalyticsPayload struct {
-
-	// The event that triggered the payload, example: "pushstate", "load", "hashchange"
-	Event string `json:"event"`
-
+type ClientMetaData struct {
 	// The user agent for the client or device
 	UserAgent string `json:"userAgent"`
 
@@ -32,13 +29,26 @@ type AnalyticsPayload struct {
 	// if the payload was a load, there might have been a referrer
 	Referrer string `json:"referrer"`
 
-	// token for client stored in cookie
-	ClientToken string
+	// Device width
+	DeviceWidth int `json:"device_width"`
 
-	//! todo - add data for button
-	//! Perhaps use this structure for each event, but add a dynamic data struct within this.
-	//! like a arbitrary interface struct
+	// Device height
+	DeviceHeight int `json:"device_height"`
 
+	// Client token, stored in a cookie.
+	Token string
+}
+
+type AnalyticsPayload struct {
+
+	// event types can be "load" | "unload" | "pushstate" | "onhashchange"
+	Event string `json:"event"`
+
+	// Some metadata on our client viewing. Ex: url, useragent, referrer
+	ClientData ClientMetaData `json:"client_meta_data"`
+
+	// Data needed for the event, ex: button data, page view data.
+	EventData interface{} `json:"event_data"`
 }
 
 // * Main controller for handling incoming analytics data,
@@ -46,29 +56,19 @@ type AnalyticsPayload struct {
 // * Updating page views and inserting new page. adding various things to caches like view cache, client details cache,
 func (c *Controller) analyticsReportHandler(w http.ResponseWriter, r *http.Request) {
 
-	// URL Queries
-	analyticsData := r.URL.Query()
-
-	// Getting Raw analytics data from url query
-	// analytic_type := analyticsData["event"]
-	// fmt.Println(analytic_type)
-
-	data := analyticsData["data"][0]
-
-	fmt.Println(data)
-	// Client token, stored in a clients cookie
 	var (
 		// Payload for an incoming analytic event, pushstate, load etc.
 		payload AnalyticsPayload
-
-		// Token that is retrieved from clients cookie,
-		// or a new one is created and stored in a cookie if doesnt exist.
-		//token string
 
 		// Client details mostly information from IP address.
 		// This is for a client that is viewing a page.
 		clientDetails ClientDetails
 	)
+
+	// URL Queries
+	analyticsData := r.URL.Query()
+
+	data := analyticsData.Get("analytics_payload")
 
 	// populating the payload struct with data from query
 	if err := json.Unmarshal([]byte(data), &payload); err != nil {
@@ -80,26 +80,27 @@ func (c *Controller) analyticsReportHandler(w http.ResponseWriter, r *http.Reque
 	// Getting IP address for client.
 	ip := getClientIP(r)
 	// Getting token stored in clients browser cookies.
-	payload.ClientToken = getAnalyticsToken(r)
+	payload.ClientData.Token = getAnalyticsToken(r)
 
 	// If there is no token, we create a new token and store it in the clients browser.
 	// We also create new client details and store it in cache
-	if payload.ClientToken == "" {
-		payload.ClientToken = generateAnalyticsToken()
-		setAnalyticsToken(w, payload.ClientToken)
+	if payload.ClientData.Token == "" {
+		//Token does not exist, so create a new one and set it as a cookie and save to cache.
+		payload.ClientData.Token = generateAnalyticsToken()
+		setAnalyticsToken(w, payload.ClientData.Token)
 
 		details, err := getNewClientDetails(ip)
 		if err != nil {
 			fmt.Println("Error: could not get ip details")
 		}
 
-		c.updateClientDetails(payload.ClientToken, *details)
+		c.updateClientDetails(payload.ClientData.Token, *details)
 
 		clientDetails = *details
 
 	} else {
 		// Token exists, so getting it from cache
-		details, exists := c.getClientDetails(payload.ClientToken)
+		details, exists := c.getClientDetails(payload.ClientData.Token)
 		if !exists {
 
 			//couldnt find client details in cache,
@@ -109,7 +110,7 @@ func (c *Controller) analyticsReportHandler(w http.ResponseWriter, r *http.Reque
 				fmt.Println("Error: could not get ip details")
 			}
 
-			c.updateClientDetails(payload.ClientToken, *newDetails)
+			c.updateClientDetails(payload.ClientData.Token, *newDetails)
 
 			clientDetails = *newDetails
 
@@ -123,7 +124,7 @@ func (c *Controller) analyticsReportHandler(w http.ResponseWriter, r *http.Reque
 
 	//should have payload by now idk
 
-	err := c.handleAnalyticEvent(payload.Event, payload, clientDetails)
+	err := c.handleAnalyticEvent(payload, clientDetails)
 	if err != nil {
 		fmt.Println(" error handling analytic event... ")
 	}
@@ -135,8 +136,8 @@ func (c *Controller) createPageView(token string, payload AnalyticsPayload, ip s
 	return types.PageView{
 		PageID:         pageID,
 		AnalyticsToken: token,
-		UserAgent:      payload.UserAgent,
-		Referrer:       payload.Referrer,
+		UserAgent:      payload.ClientData.UserAgent,
+		Referrer:       payload.ClientData.Referrer,
 		Timestamp:      time.Now(),
 		IPAddress:      ip,
 		IP:             clientDetails.IP,
