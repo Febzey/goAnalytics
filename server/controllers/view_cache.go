@@ -65,6 +65,7 @@ func (c *Controller) GetLastPageViewByTokenFromCache(token string) (*types.PageV
 
 // Called when the client is done viewing a page.
 // Will update their last viewed pages view duration.
+// also returns the last pageView with the updated view duration so we can save it.
 func (c *Controller) UpdateClientPageViewDuration(token string) (types.PageView, error) {
 	now := time.Now().Unix()
 
