@@ -8,32 +8,11 @@ const encodeData = (data) => {
         .join('&');
 };
 (() => {
-    "use strict";
     //Ideally we should create some sort of cache here, 
     //Figure out a way to handle page view durations
     //When a user "loads" a page, we should start the duration counter
     //when a user "unloads" we should end the duration counter and send it.
     //We will send the duration amount in the unload event payload.
-    /**
-     * Sending our data in an image get request to backend server.
-     * @param data
-     */
-    const sendAnalyticsData = (data) => {
-        const img = new Image();
-        const payload = JSON.stringify({
-            event: data.event,
-            client_meta_data: data.client_meta_data,
-            event_data: data.event_data,
-        });
-        console.log(payload, " payload");
-        const searchParams = new URLSearchParams(payload);
-        console.log(searchParams, "search params");
-        const queryString = `http://localhost:8080/analytics?${encodeData({
-            analytics_payload: payload
-        })}`;
-        console.log(queryString);
-        img.src = queryString;
-    };
     /**
      * Getting some data on the client viewing the page.
      * @returns
@@ -48,26 +27,33 @@ const encodeData = (data) => {
         };
     };
     /**
+     * Sending our data in an image get request to backend server.
+     * @param data
+     */
+    const sendAnalyticsData = async (event, event_data) => {
+        const clientMeta = await gatherClientMetaData();
+        const img = new Image();
+        const payload = JSON.stringify({
+            event: event,
+            client_meta_data: clientMeta,
+            event_data: event_data,
+        });
+        const queryString = `http://localhost:8080/analytics?${encodeData({
+            analytics_payload: payload
+        })}`;
+        img.src = queryString;
+    };
+    /**
      * Fires when the route is changed or page loads or hash change
      * Sends data to server.
      */
     const handleRouteChange = (type) => {
-        gatherClientMetaData()
-            .then(clientMetaData => {
-            const analyticsData = {
-                event: type,
-                client_meta_data: clientMetaData,
-                event_data: {},
-            };
-            sendAnalyticsData(analyticsData);
-        })
-            .catch((error) => {
-            console.error('Error handling route change:', error);
-        });
+        sendAnalyticsData(type, {});
     };
-    const handUnloadPage = (type) => {
-        //!TODO: use the sendAnalyticsdata function in this function.
-        //create the analyticsData map here instead of routeChanges.
+    const handleUnloadPage = (type) => {
+        console.log("Unloaded page bruh");
+        const pageUnloadData = {};
+        sendAnalyticsData(type, pageUnloadData);
     };
     /**
      * Setting page change listener for Singe Page Applications such as
@@ -94,7 +80,7 @@ const encodeData = (data) => {
      * Listen for when the page loads for first time.
      */
     window.addEventListener('load', () => handleRouteChange("load"));
-    window.addEventListener('unload', () => handleRouteChange("unload"));
+    window.addEventListener('unload', () => handleUnloadPage("unload"));
     // Check if it's an SPA and set up appropriate listeners
     if (history.pushState !== undefined) {
         setupSPAListener();

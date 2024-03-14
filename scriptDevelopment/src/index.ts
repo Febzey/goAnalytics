@@ -1,3 +1,35 @@
+interface ClientMetaData {
+    userAgent: string;
+    url: string;
+    referrer: string;
+    device_width: number;
+    device_height: number;
+}
+
+interface UnloadEventData {
+}
+
+interface LoadEventData {
+
+}
+
+interface ButtonClickData {
+
+}
+
+type eventTypes = "load" | "unload" | "pushstate" | "onhashchange";
+type eventDataTypes = UnloadEventData | LoadEventData | ButtonClickData
+
+interface AnalyticsPayload {
+    // The type of analytic event
+    event: eventTypes
+
+    // Data about the client viewing the page.
+    client_meta_data: ClientMetaData;
+
+    // Data for the certain event.
+    event_data: eventDataTypes
+}
 
 /**
  * Encoding data to send in img get.
@@ -10,68 +42,12 @@ const encodeData = (data: any): string => {
 
 
 (() => {
-    "use strict";
-
-    interface ClientMetaData {
-        // event: string
-        userAgent: string;
-        url: string;
-        referrer: string;
-        device_width: number;
-        device_height: number;
-    }
-
-    interface UnloadEventData {
-        view_duration: number
-    }
-
-    interface LoadEventData {
-
-    }
-
-    interface ButtonClickData {
-
-    }
-
-    type eventTypes = "load" | "unload" | "pushstate" | "onhashchange";
-    type eventDataTypes = UnloadEventData | LoadEventData | ButtonClickData
-
-    interface AnalyticsPayload {
-        // The type of analytic event
-        event: eventTypes
-
-        // Data about the client viewing the page.
-        client_meta_data: ClientMetaData;
-
-        // Data for the certain event.
-        event_data: eventDataTypes
-    }
-
     //Ideally we should create some sort of cache here, 
     //Figure out a way to handle page view durations
     //When a user "loads" a page, we should start the duration counter
     //when a user "unloads" we should end the duration counter and send it.
     //We will send the duration amount in the unload event payload.
 
-    /**
-     * Sending our data in an image get request to backend server.
-     * @param data 
-     */
-    const sendAnalyticsData = (data: AnalyticsPayload) => {
-        const img = new Image();
-    
-        const payload = JSON.stringify({
-            event: data.event,
-            client_meta_data: data.client_meta_data,
-            event_data: data.event_data,
-        })
-
-        const queryString = `http://localhost:8080/analytics?${encodeData({
-            analytics_payload: payload 
-        })}`;
-    
-        img.src = queryString;
-    };
     /**
      * Getting some data on the client viewing the page.
      * @returns 
@@ -87,34 +63,44 @@ const encodeData = (data: any): string => {
     };
 
     /**
+     * Sending our data in an image get request to backend server.
+     * @param data 
+     */
+    const sendAnalyticsData = async (event: string, event_data: eventDataTypes) => {
+
+        const clientMeta = await gatherClientMetaData();
+
+        const img = new Image();
+
+        const payload = JSON.stringify({
+            event: event,
+            client_meta_data: clientMeta,
+            event_data: event_data,
+        } as AnalyticsPayload)
+
+        const queryString = `http://localhost:8080/analytics?${encodeData({
+            analytics_payload: payload
+        })}`;
+
+        img.src = queryString;
+    };
+
+    /**
      * Fires when the route is changed or page loads or hash change
      * Sends data to server.
      */
     const handleRouteChange = (type: eventTypes) => {
-        gatherClientMetaData()
-
-            .then(clientMetaData => {
-
-                const analyticsData: AnalyticsPayload = {
-                    event: type,
-                    client_meta_data: clientMetaData,
-                    event_data: {},
-                };
-                sendAnalyticsData(analyticsData);
-
-            })
-
-
-            .catch((error) => {
-                console.error('Error handling route change:', error);
-            });
+        sendAnalyticsData(type, {});
     };
 
     const handleUnloadPage = (type: string) => {
 
+        console.log("Unloaded page bruh")
 
-        //!TODO: use the sendAnalyticsdata function in this function.
-        //create the analyticsData map here instead of routeChanges.
+        const pageUnloadData: UnloadEventData = {
+
+        }
+        sendAnalyticsData(type, pageUnloadData)
     }
 
     /**

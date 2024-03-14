@@ -3,20 +3,18 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
-	"github/febzey/go-analytics/types"
 	"log"
 	"net/http"
-	"time"
 )
 
 //operose
 
 type PageViewData struct {
-	isFirstLoad bool
+	//isFirstLoad bool
 }
 
 type UnloadPageData struct {
-	view_duration int64
+	//view_duration int64
 }
 
 type ClientMetaData struct {
@@ -51,9 +49,9 @@ type AnalyticsPayload struct {
 	EventData interface{} `json:"event_data"`
 }
 
-// * Main controller for handling incoming analytics data,
-// * we get the data in the form of URL queries, and return a small GIF image.
-// * Updating page views and inserting new page. adding various things to caches like view cache, client details cache,
+// Main controller for handling incoming analytics data,
+// we get the data in the form of URL queries, and return a small GIF image.
+// Updating page views and inserting new page. adding various things to caches like view cache, client details cache,
 func (c *Controller) analyticsReportHandler(w http.ResponseWriter, r *http.Request) {
 
 	var (
@@ -68,6 +66,7 @@ func (c *Controller) analyticsReportHandler(w http.ResponseWriter, r *http.Reque
 	// URL Queries
 	analyticsData := r.URL.Query()
 
+	// Gettig the main analytics payload from our url query
 	data := analyticsData.Get("analytics_payload")
 
 	// populating the payload struct with data from query
@@ -126,28 +125,8 @@ func (c *Controller) analyticsReportHandler(w http.ResponseWriter, r *http.Reque
 
 	err := c.handleAnalyticEvent(payload, clientDetails)
 	if err != nil {
-		fmt.Println(" error handling analytic event... ")
+		fmt.Println("error handling analytic event... ", err)
 	}
 
 	serveFile(w, r)
-}
-
-func (c *Controller) createPageView(token string, payload AnalyticsPayload, ip string, clientDetails ClientDetails, pageID int64) types.PageView {
-	return types.PageView{
-		PageID:         pageID,
-		AnalyticsToken: token,
-		UserAgent:      payload.ClientData.UserAgent,
-		Referrer:       payload.ClientData.Referrer,
-		Timestamp:      time.Now(),
-		IPAddress:      ip,
-		IP:             clientDetails.IP,
-		Hostname:       clientDetails.Hostname,
-		City:           clientDetails.City,
-		Region:         clientDetails.Region,
-		Country:        clientDetails.Country,
-		Loc:            clientDetails.Loc,
-		Org:            clientDetails.Org,
-		Postal:         clientDetails.Postal,
-		Timezone:       clientDetails.Timezone,
-	}
 }

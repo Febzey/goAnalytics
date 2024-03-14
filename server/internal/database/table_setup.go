@@ -29,6 +29,8 @@ func (d *Database) createTables() error {
 			id INT AUTO_INCREMENT PRIMARY KEY,
 			page_id INT,
 			analytics_token VARCHAR(255),
+			device_width INT,
+			device_height INT,
 			user_agent VARCHAR(255),
 			referrer VARCHAR(255),
 			timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -40,6 +42,7 @@ func (d *Database) createTables() error {
 			org VARCHAR(255),
 			postal VARCHAR(255),
 			timezone VARCHAR(255),
+			view_duration INT,
 			FOREIGN KEY (page_id) REFERENCES pages(id)
 		);`,
 	}

@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"github/febzey/go-analytics/internal/database"
+	"github/febzey/go-analytics/types"
 	"net/http"
 	"sync"
 
@@ -22,7 +23,7 @@ type Controller struct {
 	ClientCache map[string]ClientDetails
 
 	// a cache for page views.
-	PageViews PageViewCache
+	PageViewCache map[string][]types.PageView
 
 	// handlers for different analaytic payloads.
 	AnalyticEventHandlers map[string]AnalyticEventHandler
@@ -47,7 +48,7 @@ func NewController(router *mux.Router, database *database.Database) *Controller 
 		db:                    database,
 		mu:                    sync.Mutex{},
 		ClientCache:           make(map[string]ClientDetails),
-		PageViews:             *NewPageViewCache(),
+		PageViewCache:         make(map[string][]types.PageView),
 		AnalyticEventHandlers: make(map[string]AnalyticEventHandler),
 	}
 

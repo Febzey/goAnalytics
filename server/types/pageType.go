@@ -13,12 +13,14 @@ type Page struct {
 type PageView struct {
 	ID             int64     `json:"id"`
 	PageID         int64     `json:"page_id"`
+	URL            string    `json:"url"`
+	DeviceWidth    int       `json:"device_width"`
+	DeviceHeight   int       `json:"device_height"`
 	UserAgent      string    `json:"user_agent"`
 	Referrer       string    `json:"referrer"`
 	Timestamp      time.Time `json:"timestamp"`
 	IPAddress      string    `json:"ip_address"`
 	AnalyticsToken string    `json:"analytics_token"`
-	IP             string    `json:"ip"`
 	Hostname       string    `json:"hostname"`
 	City           string    `json:"city"`
 	Region         string    `json:"region"`
@@ -27,4 +29,5 @@ type PageView struct {
 	Org            string    `json:"org"`
 	Postal         string    `json:"postal"`
 	Timezone       string    `json:"timezone"`
+	ViewDuration   int       `json:"view_duration"`
 }
