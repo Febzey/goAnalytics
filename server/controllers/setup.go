@@ -16,6 +16,7 @@ type Controller struct {
 	// pointer to our database
 	db *database.Database
 
+	// A mutex to keep our caches in sync.
 	mu sync.Mutex
 
 	// a cache for our clients,
@@ -41,6 +42,8 @@ type Route struct {
 	HandlerFunc http.HandlerFunc
 }
 
+// creating a new controller,
+// Basically the struct that wraps our entire service.
 func NewController(router *mux.Router, database *database.Database) *Controller {
 
 	c := &Controller{
@@ -52,20 +55,26 @@ func NewController(router *mux.Router, database *database.Database) *Controller 
 		AnalyticEventHandlers: make(map[string]AnalyticEventHandler),
 	}
 
+	// new event handler for incoming analytic events.
 	c.newEventHandler()
 
 	return c
 
 }
 
+// Loading HTTP request for our server.
 func (c *Controller) LoadRoutes() {
 
 	var routes = []Route{
+
+		// This is the route where our script files will report to.
 		{
 			Method:      http.MethodGet,
 			Pattern:     "/analytics",
 			HandlerFunc: c.analyticsReportHandler,
 		},
+
+		// Getting page views for a specific URL.
 		{
 			Method:      http.MethodGet,
 			Pattern:     "/views",

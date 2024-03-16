@@ -7,7 +7,6 @@ import (
 
 // InsertPageView adds a new page view entry.
 func (d *Database) InsertPageView(args types.PageView) error {
-	fmt.Println(args.DeviceHeight)
 	_, err := d.db.Exec(`
 		INSERT INTO page_views (
 			page_id,
@@ -24,8 +23,9 @@ func (d *Database) InsertPageView(args types.PageView) error {
 			org,
 			postal,
 			timezone,
-			view_duration
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ,?,?)`,
+			view_duration,
+			unique_view
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		args.PageID,
 		args.AnalyticsToken,
 		args.DeviceWidth,
@@ -41,6 +41,7 @@ func (d *Database) InsertPageView(args types.PageView) error {
 		args.Postal,
 		args.Timezone,
 		args.ViewDuration,
+		args.UniqueView,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to insert page view: %v", err)

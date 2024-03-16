@@ -80,3 +80,31 @@ func (c *Controller) UpdateClientPageViewDuration(token string) (types.PageView,
 
 	return *lastPageView, nil
 }
+
+// Checking if the given url for a client is a unique page view or not.
+func (c *Controller) isNewVisit(token, url string) bool {
+
+	// all page views for this token.
+	views, ok := c.PageViewCache[token]
+
+	// unique view!
+	if !ok {
+		// no views where even found, so we can assume its a unqiue view right??
+		return true
+	}
+
+	// looping through each page view for token.
+	for _, view := range views {
+
+		// we found the same URL that already has the unique tag,
+		// meaning there is already a unique view stored for this token and page url.
+		if view.URL == url && view.UniqueView == 1 {
+
+			return false
+
+		}
+
+	}
+
+	return true
+}

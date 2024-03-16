@@ -30,4 +30,5 @@ type PageView struct {
 	Postal         string    `json:"postal"`
 	Timezone       string    `json:"timezone"`
 	ViewDuration   int       `json:"view_duration"`
+	UniqueView     int       `json:"unique_view"`
 }

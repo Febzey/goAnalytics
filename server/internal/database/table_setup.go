@@ -5,15 +5,6 @@ import (
 	"log"
 )
 
-// Page represents the pages table.
-type Page struct {
-	ID        int64  `json:"id"`
-	URL       string `json:"url"`
-	Route     string `json:"route"`
-	IsSecure  int    `json:"is_secure"`
-	ViewCount int    `json:"view_count"`
-}
-
 func (d *Database) createTables() error {
 	// Execute SQL statements to create tables
 	statements := []string{
@@ -23,6 +14,7 @@ func (d *Database) createTables() error {
 			route VARCHAR(255) NOT NULL,
 			is_secure TINYINT(1) DEFAULT 0,
 			view_count INT DEFAULT 0,
+			unique_view_count INT default 0,
 			UNIQUE KEY unique_page (url, route)
 		)`,
 		`CREATE TABLE IF NOT EXISTS page_views (
@@ -43,6 +35,7 @@ func (d *Database) createTables() error {
 			postal VARCHAR(255),
 			timezone VARCHAR(255),
 			view_duration INT,
+			unique_view TINYINT(1) DEFAULT 0,
 			FOREIGN KEY (page_id) REFERENCES pages(id)
 		);`,
 	}
