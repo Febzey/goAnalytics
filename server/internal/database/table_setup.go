@@ -15,6 +15,7 @@ func (d *Database) createTables() error {
 			is_secure TINYINT(1) DEFAULT 0,
 			view_count INT DEFAULT 0,
 			unique_view_count INT default 0,
+			full_url VARCHAR(255),
 			UNIQUE KEY unique_page (url, route)
 		)`,
 		`CREATE TABLE IF NOT EXISTS page_views (
@@ -36,12 +37,13 @@ func (d *Database) createTables() error {
 			timezone VARCHAR(255),
 			view_duration INT,
 			unique_view TINYINT(1) DEFAULT 0,
+			url VARCHAR(255),
 			FOREIGN KEY (page_id) REFERENCES pages(id)
 		);`,
 	}
 
 	for _, statement := range statements {
-		_, err := d.db.Exec(statement)
+		_, err := d.Pool.Exec(statement)
 		if err != nil {
 			return fmt.Errorf("failed to create tables: %v", err)
 		}

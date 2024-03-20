@@ -10,7 +10,7 @@ import (
 )
 
 type Database struct {
-	db *sql.DB
+	Pool *sql.DB
 }
 
 // NewDatabase initializes a new Database instance.
@@ -30,12 +30,12 @@ func (d *Database) Init() error {
 	)
 
 	var err error
-	d.db, err = sql.Open("mysql", dsn)
+	d.Pool, err = sql.Open("mysql", dsn)
 	if err != nil {
 		return fmt.Errorf("failed to open database: %v", err)
 	}
 
-	if err := d.db.Ping(); err != nil {
+	if err := d.Pool.Ping(); err != nil {
 		return fmt.Errorf("failed to ping database: %v", err)
 	}
 

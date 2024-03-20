@@ -42,11 +42,25 @@ const encodeData = (data: any): string => {
 
 
 (() => {
-    //Ideally we should create some sort of cache here, 
-    //Figure out a way to handle page view durations
-    //When a user "loads" a page, we should start the duration counter
-    //when a user "unloads" we should end the duration counter and send it.
-    //We will send the duration amount in the unload event payload.
+
+    /**
+     * Public key for the analytics server.
+     */
+    let inferose_key: string;
+
+    /**
+     * Getting the public key from the script tag.
+     */
+    const scriptTags = document.getElementsByTagName('script');
+    for (const script of scriptTags) {
+        if (script.getAttribute('inferose-analytics') !== null) {
+            inferose_key = script.getAttribute('inferose-analytics') as string;
+
+            console.log("Inferose key: ", inferose_key)
+            break;
+        } 
+    }
+
 
     /**
      * Getting some data on the client viewing the page.
@@ -79,7 +93,8 @@ const encodeData = (data: any): string => {
         } as AnalyticsPayload)
 
         const queryString = `http://localhost:8080/analytics?${encodeData({
-            analytics_payload: payload
+            analytics_payload: payload, 
+            public_key: inferose_key
         })}`;
 
         img.src = queryString;

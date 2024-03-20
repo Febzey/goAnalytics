@@ -2,19 +2,17 @@ package controllers
 
 import (
 	"errors"
+	"fmt"
 	"github/febzey/go-analytics/types"
 	"time"
 )
 
-// type PageView struct {
-// 	Time         int64  `json:"time"`
-// 	URL          string `json:"url"`
-// 	ViewDuration int
-// }
-
-// type PageViewCache struct {
-// 	views []types.PageView
-// }
+/*
+*
+* Page View Cache and helper functions.
+* Keeping track of page views and updating view times.
+*
+ */
 
 // Get all page views for a token
 func (c *Controller) GetPageViewCache(token string) ([]types.PageView, bool) {
@@ -42,7 +40,7 @@ func (c *Controller) AddPageViewToCache(pv types.PageView) {
 	}
 }
 
-// get last view for url.
+// Get the past page viewed by token.
 func (c *Controller) GetLastPageViewByTokenFromCache(token string) (*types.PageView, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -63,10 +61,8 @@ func (c *Controller) GetLastPageViewByTokenFromCache(token string) (*types.PageV
 	return nil, false
 }
 
-// Called when the client is done viewing a page.
-// Will update their last viewed pages view duration.
-// also returns the last pageView with the updated view duration so we can save it.
-func (c *Controller) UpdateClientPageViewDuration(token string) (types.PageView, error) {
+// Updating a view duration for a specific token. Called when user changes the page.
+func (c *Controller) UpdateClientPageViewDurationInCache(token string) (types.PageView, error) {
 	now := time.Now().Unix()
 
 	lastPageView, exists := c.GetLastPageViewByTokenFromCache(token)
@@ -81,30 +77,34 @@ func (c *Controller) UpdateClientPageViewDuration(token string) (types.PageView,
 	return *lastPageView, nil
 }
 
-// Checking if the given url for a client is a unique page view or not.
-func (c *Controller) isNewVisit(token, url string) bool {
-
-	// all page views for this token.
+// Doing some checks to determine if the visit to this url is a unique visit.
+func (c *Controller) isNewVisit(token, url string) int {
+	// Check if the page view is in the cache
 	views, ok := c.PageViewCache[token]
-
-	// unique view!
 	if !ok {
-		// no views where even found, so we can assume its a unqiue view right??
-		return true
-	}
-
-	// looping through each page view for token.
-	for _, view := range views {
-
-		// we found the same URL that already has the unique tag,
-		// meaning there is already a unique view stored for this token and page url.
-		if view.URL == url && view.UniqueView == 1 {
-
-			return false
-
+		// Page view not found in cache, check database for uniqueness
+		unique, err := c.db.CheckDatabaseForUniqueView(token, url)
+		if err != nil {
+			fmt.Println("Error checking unique view:", err)
+			return 0
 		}
 
+		return unique // Return the result directly
 	}
 
-	return true
+	// Check if the URL exists in the cache
+	for _, view := range views {
+		if view.URL == url {
+			return 0
+		}
+	}
+
+	// URL not found in cache, perform database check for uniqueness
+	unique, err := c.db.CheckDatabaseForUniqueView(token, url)
+	if err != nil {
+		fmt.Println("Error checking unique view:", err)
+		return 0
+	}
+
+	return unique
 }

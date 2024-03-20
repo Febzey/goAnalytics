@@ -7,16 +7,9 @@ import (
 	"net/http"
 )
 
-//operose
+// Inferose
 
-type PageViewData struct {
-	//isFirstLoad bool
-}
-
-type UnloadPageData struct {
-	//view_duration int64
-}
-
+// Some metadata for indidivdual clients viewing pages.
 type ClientMetaData struct {
 	// The user agent for the client or device
 	UserAgent string `json:"userAgent"`
@@ -37,6 +30,9 @@ type ClientMetaData struct {
 	Token string
 }
 
+// The structure for incoming analytic events
+// Events coming from our analytic script injected into clients browsers.
+// button clicks, unloads, page loads, route changes etc.
 type AnalyticsPayload struct {
 
 	// event types can be "load" | "unload" | "pushstate" | "onhashchange"
@@ -68,6 +64,16 @@ func (c *Controller) analyticsReportHandler(w http.ResponseWriter, r *http.Reque
 
 	// Gettig the main analytics payload from our url query
 	data := analyticsData.Get("analytics_payload")
+	pubKey := analyticsData.Get("public_key")
+
+	// how can we get the hostname from the inoming request?
+
+	hostname := r.Host
+	err := c.AuthService.VerifyPublicKey(pubKey, hostname)
+	if err != nil {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
 
 	// populating the payload struct with data from query
 	if err := json.Unmarshal([]byte(data), &payload); err != nil {
@@ -75,6 +81,8 @@ func (c *Controller) analyticsReportHandler(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
+
+	// lets do some checks with our payload. make sure the URL is verified somehow?
 
 	// Getting IP address for client.
 	ip := getClientIP(r)
@@ -123,7 +131,7 @@ func (c *Controller) analyticsReportHandler(w http.ResponseWriter, r *http.Reque
 
 	//should have payload by now idk
 
-	err := c.handleAnalyticEvent(payload, clientDetails)
+	err = c.handleAnalyticEvent(payload, clientDetails)
 	if err != nil {
 		fmt.Println("error handling analytic event... ", err)
 	}

@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"github/febzey/go-analytics/internal/auth"
 	"github/febzey/go-analytics/internal/database"
 	"github/febzey/go-analytics/types"
 	"net/http"
@@ -28,6 +29,8 @@ type Controller struct {
 
 	// handlers for different analaytic payloads.
 	AnalyticEventHandlers map[string]AnalyticEventHandler
+
+	AuthService auth.AuthService
 }
 
 type Route struct {
@@ -44,7 +47,7 @@ type Route struct {
 
 // creating a new controller,
 // Basically the struct that wraps our entire service.
-func NewController(router *mux.Router, database *database.Database) *Controller {
+func NewController(router *mux.Router, database *database.Database, authService *auth.AuthService) *Controller {
 
 	c := &Controller{
 		r:                     router,
@@ -53,6 +56,7 @@ func NewController(router *mux.Router, database *database.Database) *Controller 
 		ClientCache:           make(map[string]ClientDetails),
 		PageViewCache:         make(map[string][]types.PageView),
 		AnalyticEventHandlers: make(map[string]AnalyticEventHandler),
+		AuthService:           *authService,
 	}
 
 	// new event handler for incoming analytic events.
@@ -79,6 +83,16 @@ func (c *Controller) LoadRoutes() {
 			Method:      http.MethodGet,
 			Pattern:     "/views",
 			HandlerFunc: c.getPageViews,
+		},
+		{
+			Method:      http.MethodPost,
+			Pattern:     "/post/register",
+			HandlerFunc: c.PostNewClient,
+		},
+		{
+			Method:      http.MethodPost,
+			Pattern:     "/post/login",
+			HandlerFunc: c.GetClient,
 		},
 	}
 

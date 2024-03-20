@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github/febzey/go-analytics/controllers"
+	"github/febzey/go-analytics/internal/auth"
 	"github/febzey/go-analytics/internal/database"
 	"log"
 	"net/http"
@@ -34,7 +35,9 @@ func main() {
 	router := mux.NewRouter()
 	router.Use(mux.CORSMethodMiddleware(router))
 
-	contr := controllers.NewController(router, db)
+	authService := auth.NewAuthService(db.Pool)
+
+	contr := controllers.NewController(router, db, authService)
 	contr.LoadRoutes()
 
 	// // Define your routes

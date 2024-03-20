@@ -4,9 +4,21 @@ import (
 	"errors"
 	"fmt"
 	"github/febzey/go-analytics/types"
+	"strings"
 	"time"
 )
 
+// *
+// *
+// * Handling Analytic Event Payloads.
+// * here we handle and route page views, button clicks, unloads, etc,
+// * anything incoming from our analytics script will be handled and processed here.
+// *
+// *
+
+// The structure for individual analytic event handlers.
+// each analytic event will corrospond to its own handler function and event name.
+// event names should very closely resemble the actual event names in javascript that we use.
 type AnalyticEventHandler struct {
 
 	// Type of event: load | pushsate | onhashchange | popstate | unload | buttonclick
@@ -16,6 +28,7 @@ type AnalyticEventHandler struct {
 	handler func(AnalyticsPayload, ClientDetails) error
 }
 
+// Registering events for individual analytic event handlers such as page loads, button clicks etc.
 func (c *Controller) newEventHandler() {
 	events := []AnalyticEventHandler{
 		{
@@ -45,10 +58,10 @@ func (c *Controller) newEventHandler() {
 	}
 }
 
-// Fires for analytic events, for further handling
+// This function is called for incoming arbitrary analytic event
+// Then the event and the data along with the event is routed to its respective event function handler.
 func (c *Controller) handleAnalyticEvent(payload AnalyticsPayload, clientDetails ClientDetails) error {
 
-	// Getting the handler for specified analytic event
 	eventHandler, exists := c.AnalyticEventHandlers[payload.Event]
 	if !exists {
 		return errors.New("no analytic event found")
@@ -56,7 +69,6 @@ func (c *Controller) handleAnalyticEvent(payload AnalyticsPayload, clientDetails
 
 	fmt.Println(payload.Event, " analytic event!")
 
-	// Sending our analytic payload to the correct handler function
 	err := eventHandler.handler(payload, clientDetails)
 	if err != nil {
 		return fmt.Errorf(err.Error())
@@ -67,11 +79,8 @@ func (c *Controller) handleAnalyticEvent(payload AnalyticsPayload, clientDetails
 
 // Fires whenever a client loads or navigates through pages
 func (c *Controller) handleLoadPayload(payload AnalyticsPayload, clientDetails ClientDetails) error {
-
-	// work on unique visits.
-
 	if payload.Event != "load" {
-		lastPageView, err := c.UpdateClientPageViewDuration(payload.ClientData.Token)
+		lastPageView, err := c.UpdateClientPageViewDurationInCache(payload.ClientData.Token)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -81,7 +90,6 @@ func (c *Controller) handleLoadPayload(payload AnalyticsPayload, clientDetails C
 
 	pageView := c.newPageView(payload, clientDetails)
 
-	// Adding the page view to a cache.
 	c.AddPageViewToCache(pageView)
 
 	return nil
@@ -89,7 +97,7 @@ func (c *Controller) handleLoadPayload(payload AnalyticsPayload, clientDetails C
 
 // Analytic event handler for when a client unloads a page.
 func (c *Controller) handleUnloadPayload(payload AnalyticsPayload, clientDetails ClientDetails) error {
-	lastView, err := c.UpdateClientPageViewDuration(payload.ClientData.Token)
+	lastView, err := c.UpdateClientPageViewDurationInCache(payload.ClientData.Token)
 	if err != nil {
 		return err
 	}
@@ -100,13 +108,13 @@ func (c *Controller) handleUnloadPayload(payload AnalyticsPayload, clientDetails
 	return nil
 }
 
-// Analytic
+// Analytic Button event, button clicks.
 func handleButtonClickPayload(payload AnalyticsPayload, clientDetails ClientDetails) error {
 	//!Implement me
 	return nil
 }
 
-// this is where we will save a page
+// Saving page and page_view to database.
 func (c *Controller) savePageAndPageView(pv types.PageView) error {
 	pageID, err := c.db.InsertPage(pv.URL, pv.UniqueView)
 	if err != nil {
@@ -116,8 +124,6 @@ func (c *Controller) savePageAndPageView(pv types.PageView) error {
 
 	pv.PageID = pageID
 
-	// now handle the indivudal page view
-
 	if err := c.db.InsertPageView(pv); err != nil {
 		return err
 	}
@@ -125,26 +131,15 @@ func (c *Controller) savePageAndPageView(pv types.PageView) error {
 	return nil
 }
 
-// This function will be called at page load, or route change,
-// and is immedietly sent to cache to be used when client is done with page.
-// we update viewDuration after the user closes or changes pages.
-// THE PAGE ID IS NOT ASSIGNED HERE, WE ONLY MAKE A VIEW FOR CACHE AND ASSIGN AN ID LATER.
-// after this function is called, it is stored to cache. and used again once the user switches pages, or unloads.
+// Generating structure for a page view, this is created and saved to cache.
+// We check if the page is unique here as well as remove any trailing "/" from the URl
 func (c *Controller) newPageView(payload AnalyticsPayload, clientDetails ClientDetails) types.PageView {
-	var (
-		isUnique = 0
-	)
+	payload.ClientData.URL = strings.TrimRight(payload.ClientData.URL, "/")
 
-	// checking if this page view is unique or not.
-	// if the page is unique, we will set it to 1 in the view and store it in cache.
 	isPageUnique := c.isNewVisit(payload.ClientData.Token, payload.ClientData.URL)
-	if isPageUnique {
-		isUnique = 1
-	}
 
 	view := types.PageView{
 		PageID:         0,
-		URL:            payload.ClientData.URL,
 		AnalyticsToken: payload.ClientData.Token,
 		DeviceWidth:    payload.ClientData.DeviceWidth,
 		DeviceHeight:   payload.ClientData.DeviceHeight,
@@ -161,7 +156,8 @@ func (c *Controller) newPageView(payload AnalyticsPayload, clientDetails ClientD
 		Postal:         clientDetails.Postal,
 		Timezone:       clientDetails.Timezone,
 		ViewDuration:   0,
-		UniqueView:     isUnique,
+		UniqueView:     isPageUnique,
+		URL:            payload.ClientData.URL,
 	}
 	return view
 }
