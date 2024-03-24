@@ -33,14 +33,14 @@ func NewAuthService(db *sql.DB) *AuthService {
 
 func (ks *AuthService) EnsureTables() error {
 	// Define the table creation queries
-	tableQueries := map[string]string{
-		"clients": `CREATE TABLE IF NOT EXISTS clients (
+	tableQueries := []string{
+		`CREATE TABLE IF NOT EXISTS clients (
 			id INT AUTO_INCREMENT PRIMARY KEY,
 			client_key VARCHAR(255) NOT NULL,
 			email VARCHAR(255) NOT NULL UNIQUE,
 			password VARCHAR(255) NOT NULL
 		)`,
-		"public_keys": `CREATE TABLE IF NOT EXISTS public_keys (
+		`CREATE TABLE IF NOT EXISTS public_keys (
 			id INT AUTO_INCREMENT PRIMARY KEY,
 			client_id INT,
 			public_key VARCHAR(255) NOT NULL UNIQUE,
@@ -50,10 +50,10 @@ func (ks *AuthService) EnsureTables() error {
 	}
 
 	// Loop over the table queries and execute them
-	for tableName, query := range tableQueries {
+	for _, query := range tableQueries {
 		_, err := ks.db.Exec(query)
 		if err != nil {
-			return fmt.Errorf("failed to create %s table: %v", tableName, err)
+			return fmt.Errorf("failed to create %v", err)
 		}
 	}
 
